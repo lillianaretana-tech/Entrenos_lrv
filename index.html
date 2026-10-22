@@ -23,6 +23,7 @@ async function saveMemoryVoice(){
  if(memoryVoiceBusy||memoryVoicePending?.confirmed)return;
  if(memoryRecorder?.state==='recording'){msg.innerHTML='<div class="notice">Primero toca <b>Detener</b> para terminar la grabación. 🎙️</div>';return}
  if(memoryRecordingFinalizing)await memoryRecordingFinalizing;
+ if(memoryVoiceBusy||memoryVoicePending?.confirmed)return;
  const file=memoryVoicePending?.file||document.getElementById('memoryFile').files?.[0]||memoryRecordedFile;
  if(!file?.size){msg.innerHTML='<div class="notice">Graba tu historia o elige un audio antes de guardar. 🎙️</div>';return}
  if(!memoryVoicePending){const memoryId=crypto.randomUUID(),ext=(file.name.split('.').pop()||'webm').replace(/[^a-z0-9]/gi,'').toLowerCase();memoryVoicePending={file,memoryId,mediaId:crypto.randomUUID(),spaceId:currentMemorySpace.id,mime:file.type.split(';')[0].trim(),path:currentMemorySpace.id+'/memories/'+memoryId+'/'+crypto.randomUUID()+'.'+ext,confirmed:false}}
