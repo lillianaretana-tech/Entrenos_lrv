@@ -1,0 +1,19 @@
+{
+  "id": "/Entrenos_lrv/",
+  "name": "EntreNos — Eventos y Recuerdos",
+  "short_name": "EntreNos",
+  "description": "Comparte eventos y conserva recuerdos familiares.",
+  "start_url": "/Entrenos_lrv/",
+  "scope": "/Entrenos_lrv/",
+  "display": "standalone",
+  "background_color": "#fffaf4",
+  "theme_color": "#514377",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
