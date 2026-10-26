@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>EntreNos v0.97</title><meta name="theme-color" content="#514377"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" type="image/svg+xml" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>EntreNos v0.98</title><meta name="theme-color" content="#514377"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" type="image/svg+xml" href="./icon.svg"><link rel="apple-touch-icon" href="./icon.svg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0/dist/umd/supabase.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2.95.0/dist/umd/supabase.min.js'"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script><script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js"></script>
 <style>
@@ -116,6 +116,15 @@ async function openMemoryPresentation(){
  try{
   for(const f of memoryGalleryItems){const {data:r}=await sb.storage.from('entrenos-private').createSignedUrl(f.object_path,3600);if(r?.signedUrl)memoryPresentationItems.push({...f,url:r.signedUrl})}
   if(!document.getElementById('memoryPresentation'))return;
+  await loadMemoryPeopleIndex();
+  const presentationIds=memoryPresentationItems.map(x=>x.id);
+  const presentationPositions=[];
+  for(let j=0;j<presentationIds.length;j+=150){
+   const p=await sb.from('media_people_positions').select('media_id,person_id,x,y').in('media_id',presentationIds.slice(j,j+150));
+   if(p.error){console.warn('EntreNos presentation people',p.error);break}
+   presentationPositions.push(...(p.data||[]))
+  }
+  for(const f of memoryPresentationItems)f.peoplePositions=presentationPositions.filter(p=>p.media_id===f.id);
   showMemoryPresentationItem();
   memoryPresentationTimer=setInterval(()=>memoryPresentationStep(1),7000);
  }catch(e){console.error('EntreNos presentation',e);closeMemoryPresentation();alert('No se pudo abrir la presentación.')}
@@ -124,8 +133,12 @@ function showMemoryPresentationItem(){
  const stage=document.getElementById('memoryPresentationStage'),count=document.getElementById('memoryPresentationCount');if(!stage)return;
  if(!memoryPresentationItems.length){stage.innerHTML='<div class="presentationEmpty">Todavía no hay recuerdos para presentar.</div>';return}
  const f=memoryPresentationItems[memoryPresentationIndex];if(count)count.textContent=(memoryPresentationIndex+1)+' de '+memoryPresentationItems.length+(f.captured_date_text?' · '+f.captured_date_text:'');
- const media=f.kind==='photo'?'<img src="'+escapeHtml(f.url)+'" alt="Fotografía familiar">':f.kind==='video'?'<video src="'+escapeHtml(f.url)+'" controls playsinline></video>':'<audio src="'+escapeHtml(f.url)+'" controls style="width:min(80vw,500px)"></audio>';
- stage.innerHTML='<div style="text-align:center;max-width:100%;max-height:100%;overflow:auto">'+media+'<div style="font-size:clamp(18px,3vw,28px);font-weight:700;margin:12px 0 5px">'+escapeHtml(f.title||'')+'</div><div style="font-size:clamp(14px,2vw,19px);max-width:850px;margin:auto;white-space:pre-wrap">'+escapeHtml(f.story||'')+'</div></div>';
+ const identified=(f.peoplePositions||[]).map(p=>({position:p,person:memoryPersonRecords.get(p.person_id)})).filter(x=>x.person);
+ const pins=identified.map(({position:p,person})=>'<span title="'+escapeHtml(person.display_name)+'" style="position:absolute;left:'+p.x+'%;top:'+p.y+'%;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:50%;background:#243c70;color:white;font-size:14px;width:27px;height:27px;line-height:23px;text-align:center;box-shadow:0 1px 5px #000a">'+(person.remembered?'🕊️':'●')+'</span>').join('');
+ const photo='<div style="position:relative;display:inline-block;max-width:100%;line-height:0"><img src="'+escapeHtml(f.url)+'" alt="Fotografía familiar" style="display:block;max-width:100%;max-height:64vh;width:auto;height:auto">'+pins+'</div>';
+ const media=f.kind==='photo'?photo:f.kind==='video'?'<video src="'+escapeHtml(f.url)+'" controls playsinline></video>':'<audio src="'+escapeHtml(f.url)+'" controls style="width:min(80vw,500px)"></audio>';
+ const people=identified.length?'<div style="font-size:clamp(13px,2vw,18px);margin:10px auto;max-width:90vw;line-height:1.6">👥 '+identified.map(({person})=>escapeHtml(person.display_name)+(person.remembered?' 🕊️':'')).join(' · ')+'</div>':'';
+ stage.innerHTML='<div style="text-align:center;max-width:100%;max-height:100%;overflow:auto">'+media+people+'<div style="font-size:clamp(18px,3vw,28px);font-weight:700;margin:12px 0 5px">'+escapeHtml(f.title||'')+'</div><div style="font-size:clamp(14px,2vw,19px);max-width:850px;margin:auto;white-space:pre-wrap">'+escapeHtml(f.story||'')+'</div></div>';
 }
 function memoryPresentationStep(delta){if(!memoryPresentationItems.length)return;memoryPresentationIndex=(memoryPresentationIndex+delta+memoryPresentationItems.length)%memoryPresentationItems.length;showMemoryPresentationItem()}
 function toggleMemoryPresentation(){const btn=document.getElementById('memoryPresentationPause');if(memoryPresentationTimer){clearInterval(memoryPresentationTimer);memoryPresentationTimer=null;if(btn)btn.textContent='▶ Reanudar'}else{memoryPresentationTimer=setInterval(()=>memoryPresentationStep(1),7000);if(btn)btn.textContent='⏸ Pausar'}}
